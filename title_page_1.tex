@@ -111,19 +111,22 @@ Nº76618\\
 \tableofcontents
 \newpage
 %ROS BASICS
-\section{ROS}
+\section{Robot Operating System}
 
-\subsection{What is ROS}
-ROS or Robot Operating System is an open-source, meta-operating system that provides libraries and tools to help developers create robot applications. This includes hardware abstraction, device drivers, visualizers, message-passing, package management and more.
-\subsection{ROS basics}
-In a graphic level, ROS is composed by:
+\subsection{Introduction}
+Robot Operating System (ROS) is an open-source, meta-operating system that provides libraries and tools to help developers create robotic applications. This includes hardware abstraction, device drivers, tools for introspection, message-passing and more.
+\subsection{ROS architecture}
+%MORE STUFF
+ROS is composed by:
 \begin{itemize}
 \item \textbf{Nodes} - Processes that perform computation.
 \item \textbf{Messages} - ROS data type used when subscribing or publishing in a topic. 
 \item \textbf{Topics} - Nodes can send messages by publishing to a topic or receive them by subscribing to a topic. 
 \item \textbf{Master} - Provides registration of names (helps nodes find each other).
+% V
 \item \textbf{rosout} - ROS equivalent of stdout 
 \item \textbf{roscore} - Master+rosout+parameter server. 
+%X
 \end{itemize}
 %%\subsubsection{ROS nodes}
 %%\subsubsection{ROS topics}
@@ -134,10 +137,10 @@ Figure \ref{fig:ros_concepts} shows the general architecture of ROS.
 \begin{figure}[!htb]
     \centering
     \includegraphics[scale=0.25]{ros_graph.png}
-    \caption{ROS Graph Concepts}
+    \caption{ROS architecture overview}
     \label{fig:ros_concepts}
 \end{figure}
-\section{interface between ROS and the radar}
+\section{Interface between ROS and the radar}
 Texas Instruments provides a ros package that interfaces radar data to the ROS message format.
 To do this it loads two nodelets:
 \begin{itemize}
@@ -145,7 +148,7 @@ To do this it loads two nodelets:
 \item \textbf{mmWaveDataHdl} - This nodelet reads and sorts the incoming radar data from the mmWave EVM. Publishes the output as a PointCloud2 type ROS message to the topic \textbf{/radar/RScan}.
 \end{itemize}
 
-Finnaly we have the \textbf{mmWaveQuickConfig} node that will read a user specified radar chirp profile (.cfg file) line-by-line and send each line to the \textbf{mmWaveCommSrv} nodelet to configure the EVM.
+Finnaly we have the \textbf{mmWaveQuickConfig} node that will read a user specified radar chirp profile line-by-line and send each line to the \textbf{mmWaveCommSrv} nodelet to configure the EVM.
 %%DEMO DATA STRUCTURE -> ROS POINTCLOUD
 %% ROS POINTCLOUD -> PCL POINTCLOUD
 \
@@ -154,13 +157,15 @@ Finnaly we have the \textbf{mmWaveQuickConfig} node that will read a user specif
 %%PUT figure:
 The published ROS message PointCloud2 follows the mmwave demo structure (Fig. 2). Each point has 6 fields:
 \begin{itemize}
-\item x - position x of the object detected relative to the radar frame.
+\item x - position x of the detected  object in the frame of the radar.
 \item y - position y.
-\item z - position z (for AWR1642 this is equal to zero).
-\item intensity - relative power of the received signal corresponding to that object.
+\item z - position z (for 2D devices this is equal to zero).
 \item range - range of the object relative to the radar frame.
 \item doppler - radial velocity of the object relative to the radar frame.
+% POR IMAGEM
+\item intensity - relative power of the received signal corresponding to that object.
 \end{itemize}
+
 \begin{figure}[!htb]
     \centering
     \includegraphics[scale=0.7]{2_demo_vis_struct.PNG}
@@ -187,7 +192,7 @@ This will launch the TI mmWave ROS Driver nodes that configure the EVM and publi
     \caption{Pointcloud2 radar data displayed by rviz}
     \label{fig:radar_rviz}
 \end{figure}
-\subsection{Visualization markers}´
+\subsection{Visualization of the radar point cloud}
 Seeing the points in the XY space plane is not enough to fully visualize the radar data sent since each point also gives us velocity and intensity information.
 We can visualize it by using markers such as arrows or text in rviz.
 Figure \ref{fig:doppler_marker} displays the radial velocity of each point with an arrow. The size of the arrow indicates how fast the object is going. Figure \ref{fig:intensity_marker} shows the intensity values of each object in text. This type of visualization will be useful later on when we try to filter the cloud.
@@ -215,10 +220,11 @@ For more information on this topics we suggest the reading of the links bellow:
 %SDK USER GUIDE
 %CHIRP PARAMETER CONFIG
 
-\section{Point Cloud Manipulation}
+\section{Radar Data Processing}
 Now that we have the radar constantly giving us a point cloud we can further process using the \textbf{Point Cloud Library}. PCL offers a wide variety of modules to handle point clouds. In our case we will use it for filtering, clustering and other operations.
+%PCL NO FIM
 \subsection{Passthrough Filters}
-In our point cloud there may be some points that have characteristics we don't want, such as points with intensity too low that lead to false detections, or points too far away from the radar. To remove this points we use \textbf{passthrough} filters that specify the range of values a given channel can have in order for a point to be kept in the point cloud. 
+In the point cloud there may be some points that have undesirable characteristics, such as points with low intensity  that lead to false detections or outside of the radar operating range. To remove this points we use \textbf{passthrough} filters that specify the range of values a given field can have in order for a point to be kept in the point cloud. 
 
 For example, if we are only interested in obstacles that are moving between 0.5 m/s and 1.0 m/s (radial velocity), this can be done by using a pass through filter on the doppler channel.
 Figure \ref{fig:filters} shows an example where we delete false detections close to the radar by filtering the pointcloud by intensity.
@@ -233,15 +239,16 @@ Figure \ref{fig:filters} shows an example where we delete false detections close
 
 %%PUT IMAGE INTENSITY FILTERING  RVIZ
 \subsection{Euclidean Clustering}
-If we want to identify some relatively large objects such as persons we can use euclidean clustering. This identifies a subset of points that are close together. The two main parameters in this operation are:
+%Objectivos do clustering
+To identify objects such as persons we can use euclidean clustering. This identifies a subset of points that are close together. The two main parameters in this operation are:
 \begin{itemize}
 \item \textbf{minClusterSize} - Minimum number of points a cluster must have in order to be valid.
 \item \textbf{ClusterTolerance}  - Maximum distance a point may have to a cluster member to also be counted as member of that cluster.
 \end{itemize}
 %%%PUT CLUSTER RVIZ FIGURE
 This parameters must be tuned to the type of cluster we want to find. 
-If the \textbf{ClusterTolerance} parameter is too small, it can happen that an actual object can be seen as multiple clusters, if you set the value too high, it could happen, that multiple objects are seen as one cluster.
-In figure \ref{fig:filters} we use the module pcl
+If the \textbf{ClusterTolerance} parameter is too small, it can happen that an actual object can be seen as multiple clusters, if the value is high, it could happen that multiple objects are seen as one cluster.
+%In figure \ref{fig:filters} we use the module pcl
 %% CLUSTER FIGURE
 \begin{figure}[!htb]
     \centering
@@ -254,8 +261,8 @@ We previously said that our point cloud has a doppler channel that retrieves the
 %%PUT IMAGE OF PREDICTED PC2
 This information may be useful to avoid collisions when the robot is navigating. 
 With the clusters identified we can now estimate its mean velocity and with that try to predict its position in the future. 
-\section{ROS Navigation Stack}
-
+\section{Autonomous Navigation}
+%Less Implementation More general explaining of how to navigate
 The ROS navigation stack is a set of software packages that properly combined can get a robot to navigate autonomously.
 Figure X  shows an example of turtlebot2 using the navigation stack to drive in rviz.
 However, before running it we first need to properly setup the robot.
